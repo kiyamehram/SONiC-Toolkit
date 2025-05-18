@@ -1,11 +1,23 @@
 import os
-import socket
 import smtplib
 from requests import get
-from fuzzywuzzy import fuzz
 from googlesearch import search
 from bs4 import BeautifulSoup
 import colorama
+import socket
+
+try:
+    from pyngrok import ngrok, conf
+except ImportError:
+    ngrok = None
+    conf = None
+    print("[-] pyngrok not found. Install it with: pip install pyngrok")
+
+try:
+    from utils import build
+except ImportError:
+    print("[-] Could not import 'build' from utils.py. Please check that utils.py exists and contains a build() function.")
+    build = None
 
 colorama.init(autoreset=True)
 
@@ -54,12 +66,12 @@ def display_kanki():
   ██    ▒▒▒▒▒▒██          ██████░░░░░░████  ██        ██                   
   ██    ▒▒▒▒▒▒██          ██▓▓▓▓████████    ██        ██                   
   ██          ██          ██▓▓▓▓████      ██        ████                   
-██▒▒▒▒      ░░████      ██▓▓▓▓▓▓▓▓██  ████          ██                    
-██▒▒▒▒▒▒    ██    ████████████████████  ████████████                      
+██▒▒▒▒      ░░████      ██▓▓▓▓▓▓▓▓██  ████          ██                     
+██▒▒▒▒▒▒    ██    ████████████████████  ████████████                       
 ██▒▒▒▒▒▒▒▒▒▒██          ██              ██                                
   ██▒▒▒▒▒▒██          ██                ██                                
   ██▒▒▒▒██            ██              ██                                  
-    ████                ██              ██                                
+    ████                ██              ██                                  
                       ██                ██                                
                       ████████████████████                                
                       ██▒▒▒▒▒▒▒▒▒▒        ████                            
@@ -82,7 +94,6 @@ def stdOutput(type):
 
 def clearDirec():
     os.system('cls' if os.name == 'nt' else 'clear')
-
 
 def validate_ip(ip):
     try:
@@ -122,96 +133,48 @@ def email_bomber(server_choice, user, pwd, to, subject, body, count):
                 print(stdOutput("fail") + "Cancelled by user.")
                 break
             except Exception as e:
-                print(stdOutput("error") + f"Error sending email: {e}")
+                print(stdOutput("error") + f"Error sending email: {str(e)}")
                 break
 
         server.quit()
-        print(stdOutput("info") + "Finished sending emails.")
-
-    except smtplib.SMTPAuthenticationError as e:
-        print(stdOutput("error") + f"Authentication error: {e}")
     except Exception as e:
-        print(stdOutput("error") + f"Unexpected error: {e}")
+        print(stdOutput("error") + f"Failed to connect to the server: {str(e)}")
 
-def search_links(query):
-    results = 100
-    print(f"[~] Searching for '{query}'")
+def search_results(query):
+    try:
+        print(stdOutput("info") + "Searching Google for: " + query)
+        results = search(query, num_results=5)
+        return results
+    except Exception as e:
+        print(stdOutput("error") + f"Error while searching: {str(e)}")
+        return []
 
-    for url in search(query, stop=results):
-        print(f'\n[+] Url detected: {url}')
-        try:
-            text = get(url, timeout=1).text
-        except:
-            continue
-        soup = BeautifulSoup(text, "html.parser")
-        links_detected = []
-        try:
-            print(f'[?] Title: {soup.title.text.strip()}')
-        except:
-            print(f'[?] Title: null')
-        try:
-            for link in soup.findAll('a'):
-                href = link.get('href')
-                if href and href.startswith('http') and href not in links_detected:
-                    if query.lower() in href.lower() or fuzz.ratio(link.text, href) >= 60:
-                        print(f'--- Relevant link found: {href}')
-                        links_detected.append(href)
-        except:
-            continue
-        if not links_detected:
-            print('--- No data found')
+def fetch_page_data(url):
+    try:
+        response = get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return soup
+    except Exception as e:
+        print(stdOutput("error") + f"Error while fetching page: {str(e)}")
+        return None
 
-def help_menu():
-    return """
-/email-bomber
-↪ sends bulk emails.
-↪ usage: /email-bomber <server> <your_email> <your_password> <target_email> <subject> <message> <count>
-
-/apk-file
-↪ builds an apk (not implemented in this version).
-
-/search-links
-↪ performs a google search and finds relevant links.
-↪ usage: /search-links <query>
-
-/exit
-↪ exits the program.
-"""
-
-def main():
-    clearDirec()
-    display_kanki()
-    print(stdOutput("warning") + "Type '/help' to see available commands." + colors.reset)
-
-    while True:
-        try:
-            command = input(f"{colors.blue}kiya{colors.red}@{colors.green}NET{colors.reset}: ").strip()
-            if command.lower() == '/help':
-                print(help_menu())
-            elif command.lower().startswith('/email-bomber'):
-                args = command.split()[1:]
-                if len(args) < 7:
-                    print(stdOutput("error") + "Usage: /email-bomber <server> <your_email> <your_password> <target_email> <subject> <message> <count>")
-                    continue
-                server, email, pwd, target, subject, message, count = args[:7]
-                try:
-                    count = int(count)
-                    email_bomber(server, email, pwd, target, subject, message, count)
-                except ValueError:
-                    print(stdOutput("error") + "Count must be an integer.")
-            elif command.lower().startswith('/search-links'):
-                parts = command.split(' ', 1)
-                if len(parts) == 2:
-                    search_links(parts[1])
-                else:
-                    print(stdOutput("error") + "Usage: /search-links <query>")
-            elif command.lower() == '/exit':
-                print(stdOutput("info") + "Exiting.")
-                break
-            else:
-                print(stdOutput("error") + "Unknown command.")
-        except Exception as e:
-            print(stdOutput("error") + f"Error: {e}")
+def apk_file_builder(file_name, use_ngrok=False):
+    if use_ngrok and ngrok:
+        public_url = ngrok.connect(80)
+        print(stdOutput("info") + f"Ngrok tunnel available at: {public_url}")
+    try:
+        build(file_name)
+        print(stdOutput("info") + f"APK file {file_name} has been built successfully.")
+    except Exception as e:
+        print(stdOutput("error") + f"Failed to build APK: {str(e)}")
 
 if __name__ == "__main__":
-    main()
+    clearDirec()
+    display_kanki()
+    apk_file_builder("myApp.apk", use_ngrok=True)
+    results = search_results("openai")
+    if results:
+        print(stdOutput("info") + "Google Search Results: ")
+        for result in results:
+            print(result)
+
