@@ -6,6 +6,9 @@ from bs4 import BeautifulSoup
 import colorama
 import socket
 from cryptography.fernet import Fernet
+import time
+import requests
+
 
 
 try:
@@ -162,15 +165,22 @@ def email_bomber(server_choice, user, pwd, to, subject, body, count, key=None):
             except KeyboardInterrupt:
                 print(std_output("fail") + "Cancelled by user.")
                 break
-            except Exception as e:
-                print(std_output("error") + f"Send error: {str(e)}")
+            except smtplib.SMTPException as e:
+                print(std_output("error") + f"Email sending error: {str(e)}")
                 break
+            except Exception as e:
+                print(std_output("error") + f"Sending error: {str(e)}")
+                time.sleep(5)
 
         server.quit()
-    except Exception as e:
+    except smtplib.SMTPConnectError as e:
         print(std_output("error") + f"Connection failed: {str(e)}")
+    except Exception as e:
+        print(std_output("error") + f"Unexpected error: {str(e)}")
 
 
+
+response = requests.get('https://www.google.com', timeout=10)
 def search_google(query):
     try:
         print(std_output("info") + f"Searching Google for: {query}")
@@ -178,6 +188,21 @@ def search_google(query):
     except Exception as e:
         print(std_output("error") + f"Search error: {str(e)}")
         return []
+    max_retries = 3
+    retry_delay = 5  # Delay between retries in seconds
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get('https://www.google.com', timeout=10)
+            # If the request is successful
+            print(response.text)
+            break
+        except requests.exceptions.RequestException as e:
+            print(f"Connection failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                print("No more retry attempts left.")
 
 
 def save_key_to_file(key):
@@ -298,3 +323,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
