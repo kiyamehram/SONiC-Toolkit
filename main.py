@@ -5,6 +5,8 @@ from googlesearch import search
 from bs4 import BeautifulSoup
 import colorama
 import socket
+from cryptography.fernet import Fernet
+
 
 try:
     from pyngrok import ngrok
@@ -103,7 +105,36 @@ def display_kanki():
     """
     print(kanki)
 
-def email_bomber(server_choice, user, pwd, to, subject, body, count):
+
+
+def generate_key():
+    """
+    Generates a key for encryption.
+    """
+    return Fernet.generate_key()
+
+def encrypt_password(password, key):
+    """
+    Encrypts a password using the given key.
+    """
+    fernet = Fernet(key)
+    encrypted = fernet.encrypt(password.encode())
+    return encrypted
+
+def decrypt_password(encrypted_password, key):
+    """
+    Decrypts an encrypted password using the given key.
+    """
+    fernet = Fernet(key)
+    decrypted = fernet.decrypt(encrypted_password).decode()
+    return decrypted
+
+
+
+def email_bomber(server_choice, user, pwd, to, subject, body, count, key=None):
+    if key:
+        pwd = decrypt_password(pwd, key)
+
     message = f'From: {user}\nSubject: {subject}\n\n{body}'
     sent = 0
 
@@ -139,6 +170,7 @@ def email_bomber(server_choice, user, pwd, to, subject, body, count):
     except Exception as e:
         print(std_output("error") + f"Connection failed: {str(e)}")
 
+
 def search_google(query):
     try:
         print(std_output("info") + f"Searching Google for: {query}")
@@ -146,6 +178,27 @@ def search_google(query):
     except Exception as e:
         print(std_output("error") + f"Search error: {str(e)}")
         return []
+
+
+def save_key_to_file(key):
+    """
+    Saves the generated encryption key to a file.
+    """
+    with open("secret.key", "wb") as key_file:
+        key_file.write(key)
+
+def load_key_from_file():
+    """
+    Loads the encryption key from the file.
+    """
+    try:
+        with open("secret.key", "rb") as key_file:
+            key = key_file.read()
+        return key
+    except FileNotFoundError:
+        print(std_output("error") + "Key file not found.")
+        return None
+
 
 def fetch_page_html(url):
     try:
@@ -202,6 +255,12 @@ def main():
     clear_console()
     display_kanki()
 
+    key = load_key_from_file()
+    if not key:
+        print(std_output("info") + "Generating new encryption key...")
+        key = generate_key()
+        save_key_to_file(key)
+
     while True:
         command = input("Enter command (/help for help): ").strip().lower()
 
@@ -213,12 +272,13 @@ def main():
         elif command == "/email-bomber":
             server_choice = input("Choose email server (gmail/yahoo/outlook): ").strip()
             user = input("Enter your email: ").strip()
-            pwd = input("Enter your email password: ").strip()
+            password = input("Enter your email password: ").strip()
+            encrypted_password = encrypt_password(password, key)
             to = input("Enter recipient email: ").strip()
             subject = input("Enter email subject: ").strip()
             body = input("Enter email body: ").strip()
             count = int(input("How many emails to send? ").strip())
-            email_bomber(server_choice, user, pwd, to, subject, body, count)
+            email_bomber(server_choice, user, encrypted_password, to, subject, body, count, key)
         elif command == "/osint" or command == "/search-links":
             query = input("Enter search query: ").strip()
             results = search_google(query)
@@ -234,6 +294,7 @@ def main():
             apk_file_builder(file_name, use_ngrok)
         else:
             print(std_output("error") + "Unknown command. Type '/help' for a list of commands.")
+
 
 if __name__ == "__main__":
     main()
