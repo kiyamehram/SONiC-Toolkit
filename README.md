@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="[https://via.placeholder.com/800x200/0044ff/00a2ff?text=Sonic+Tools](https://art.ngfiles.com/images/5725000/5725572_818708_iwillendyou_untitled-5725572.187c61eba46a1680acc0356b4632351c.webp?f1716583458)]" alt="Sonic Tools Banner" width="800">
+  <img src="https://art.ngfiles.com/images/5725000/5725572_818708_iwillendyou_untitled-5725572.187c61eba46a1680acc0356b4632351c.webp?f1716583458" alt="Sonic Tools Banner" width="800">
 </p>
 
 <h1 align="center"> Sonic Tools ⚡</h1>
